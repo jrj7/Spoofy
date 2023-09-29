@@ -28,7 +28,7 @@ emote = '\N{THUMBS UP SIGN}'
 
 # log config
 logger = logging.getLogger('discord')
-logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.INFO)
 handler = logging.FileHandler(filename = 'discord.log', encoding = 'utf-8', mode= 'w')
 logger.addHandler(handler)
 
