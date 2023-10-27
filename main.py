@@ -1,6 +1,8 @@
 import os
 import requests
 import logging
+from logging.handlers import RotatingFileHandler
+import re
 
 import discord
 
@@ -28,7 +30,8 @@ client = discord.Client(intents=intents)
 # log config
 logger = logging.getLogger('discord')
 logger.setLevel(logging.INFO)
-handler = logging.FileHandler(filename = 'discord.log', encoding = 'utf-8', mode= 'w')
+# max log size of 1mb
+handler = RotatingFileHandler( 'discord.log', maxBytes =  (1024*1024), backupCount = 1)
 formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
 handler.setFormatter(formatter)
 logger.addHandler(handler)
@@ -95,7 +98,10 @@ async def on_message(message):
         if(emote != None):
             await message.add_reaction(emote)
     if 'https://spotify.link/' in message.content:
-        song_url = await get_full_url(message.content)
+        #grab only the url, should be 32 characters from beginning
+        oRegex = re.search('(.{32})', message.content)
+        short_url = oRegex.group()
+        song_url = await get_full_url(short_url)
         if(song_url != None):
             emote = await add_song_to_playlist(song_url, PLAYLISTID)
         if(emote != None):
