@@ -49,16 +49,23 @@ async def add_song_to_playlist(song_url, playlist_id):
         if('track/' in song_url):
             song_id = song_url.split('track/')[1]
             song_id = song_id.split('?')[0]
-            song_id = ("spotify:track:" + song_id)
-            logger.info('song id = ' + song_id)
+            song_uri = ("spotify:track:" + song_id)
+            logger.info('song id = ' + song_uri)
+
+            # check if song is already in playlist
+            tracks = get_playlist_tracks(playlist_id, sp)
+            for track in tracks:
+                if( track['track']['id'] == song_id):
+                    logger.info(song_url + ' already in playlist.')
+                    return 'duplicate'
 
             # add song to playlist
-            sp.playlist_add_items(playlist_id, items = [song_id], position = None)
+            sp.playlist_add_items(playlist_id, items = [song_uri], position = None)
             logger.info('Track added to playlist.')
-            return '\N{THUMBS UP SIGN}'
+            return 'success'
         else:
             logger.info(song_url + ' not added. May be a non-track.')
-            return
+            return 'failure'
 
     except Exception as err:
         logger.error(type(err))
@@ -83,10 +90,18 @@ async def get_full_url(short_url):
         logger.error(err)
         return
 
+# gets full list of playlist tracks
+def get_playlist_tracks(playlist_id, sp):
+    results = sp.playlist_items(playlist_id, fields = 'items.track.id,next')
+    tracks = results['items']
+    while results['next']:
+        results = sp.next(results)
+        tracks.extend(results['items'])
+    return tracks
 
 @client.event
 async def on_message(message):
-    emote = None
+    response = None
     song_url = None
     if message.author == client.user:
         return
@@ -94,17 +109,21 @@ async def on_message(message):
     if message.channel.id != int(CHANNEL):
         return
     if 'https://open.spotify.com/track/' in message.content:
-        emote = await add_song_to_playlist(message.content, PLAYLISTID)
-        if(emote != None):
-            await message.add_reaction(emote)
+        response = await add_song_to_playlist(message.content, PLAYLISTID)
+        if(response == 'success'):
+            await message.add_reaction('\N{THUMBS UP SIGN}')
+        elif(response == 'duplicate'):
+            await message.reply('Song already in playlist \N{PENSIVE FACE}')
     if 'https://spotify.link/' in message.content:
         #grab only the url, should be 32 characters from beginning
         oRegex = re.search('(.{32})', message.content)
         short_url = oRegex.group()
         song_url = await get_full_url(short_url)
         if(song_url != None):
-            emote = await add_song_to_playlist(song_url, PLAYLISTID)
-        if(emote != None):
-            await message.add_reaction(emote)
+            response = await add_song_to_playlist(song_url, PLAYLISTID)
+        if(response == 'success'):
+            await message.add_reaction('\N{THUMBS UP SIGN}')
+        elif(response == 'duplicate'):
+            await message.reply('Song already in playlist \N{PENSIVE FACE}')
 
 client.run(TOKEN, log_handler = None)
