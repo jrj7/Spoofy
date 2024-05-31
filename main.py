@@ -52,6 +52,10 @@ async def add_song_to_playlist(song_url, playlist_id):
             song_id = ("spotify:track:" + song_id)
             logger.info('song id = ' + song_id)
 
+            # check if song is already in playlist
+            tracks = sp.playlist_tracks(playlist_id )
+            logger.info( 'playlist tracks: ' + tracks );
+
             # add song to playlist
             sp.playlist_add_items(playlist_id, items = [song_id], position = None)
             logger.info('Track added to playlist.')
