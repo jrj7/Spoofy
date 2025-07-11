@@ -141,13 +141,14 @@ intents.message_content = True
 intents.reactions = True
 client = discord.Client(intents=intents)
 
-# takes a spotify url and adds song to defined playlist
-async def add_song_to_playlist(song_url, playlist_id):
-    try:
-        redirect_uri = "http://localhost:3000/callback"
-        access_token = get_access_token(SPOTIFYID, SPOTIFYSECRET, redirect_uri)
-        sp = spotipy.Spotify(auth=access_token)
+# set up spotify object
+redirect_uri = "http://localhost:3000/callback"
+access_token = get_access_token(SPOTIFYID, SPOTIFYSECRET, redirect_uri)
+sp = spotipy.Spotify(auth=access_token)
 
+# takes a spotify url and adds song to defined playlist
+async def add_song_to_playlist(song_url, playlist_id, sp):
+    try:
         # check if url is for a song, and extract the ID
         if('track/' in song_url):
             song_id = song_url.split('track/')[1]
@@ -212,7 +213,7 @@ async def on_message(message):
     if message.channel.id != int(CHANNEL):
         return
     if 'https://open.spotify.com/track/' in message.content:
-        response = await add_song_to_playlist(message.content, PLAYLISTID)
+        response = await add_song_to_playlist(message.content, PLAYLISTID, sp)
         if(response == 'success'):
             await message.add_reaction('\N{THUMBS UP SIGN}')
         elif(response == 'duplicate'):
@@ -223,7 +224,7 @@ async def on_message(message):
         short_url = oRegex.group()
         song_url = await get_full_url(short_url)
         if(song_url != None):
-            response = await add_song_to_playlist(song_url, PLAYLISTID)
+            response = await add_song_to_playlist(song_url, PLAYLISTID, sp)
         if(response == 'success'):
             await message.add_reaction('\N{THUMBS UP SIGN}')
         elif(response == 'duplicate'):
