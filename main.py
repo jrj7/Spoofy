@@ -43,12 +43,30 @@ client = discord.Client(intents=intents)
 # set up spotify object
 scope = "playlist-modify-public"
 redirect_uri = "http://localhost:8888/callback"
-auth_manager = SpotifyOAuth(client_id = SPOTIFYID,
-                            client_secret = SPOTIFYSECRET,
-                            redirect_uri = redirect_uri,
-                            scope = scope,
-                            cache_path = CACHEPATH)
-sp = spotipy.Spotify(auth_manager = auth_manager )
+try:
+    discord_logger.info("Initializing SpotifyOAuth...")
+    auth_manager = SpotifyOAuth(client_id = SPOTIFYID,
+                                client_secret = SPOTIFYSECRET,
+                                redirect_uri = redirect_uri,
+                                scope = scope,
+                                cache_path = CACHEPATH)
+    token_info = auth_manager.get_cached_token()
+    if(token_info):
+        discord_logger.info('Using cached Spotify token.')
+    else:
+        discord_logger.info('No cached Spotify token found. Attempting to get new token.')
+        token_info = auth.manager.get_access_token(as_dict=False)
+        discord_logger.info('New Spotify token acquired.')
+
+    sp = spotipy.Spotify(auth_manager = auth_manager )
+    discord_logger.info('Spotify client initialized successfully.')
+
+except Exception as err:
+    discord_logger.error("Error during Spotify authentication.")
+    discord_logger.error(type(err))
+    discord_logger.error(err.args)
+    discord_logger.error(err)
+    raise
 
 # takes a spotify url and adds song to defined playlist
 async def add_song_to_playlist(song_url, playlist_id, sp):
@@ -117,21 +135,26 @@ async def on_message(message):
     if message.channel.id != int(CHANNEL):
         return
     if 'https://open.spotify.com/track/' in message.content:
+        discord_logger.info("Detected Spotify track URL.")
         response = await add_song_to_playlist(message.content, PLAYLISTID, sp)
         if(response == 'success'):
             await message.add_reaction('\N{THUMBS UP SIGN}')
         elif(response == 'duplicate'):
             await message.reply('Song already in playlist \N{PENSIVE FACE}')
     if 'https://spotify.link/' in message.content:
+        discord_logger.info( "Detected Spotify shortened URL")
         #grab only the url, should be 32 characters from beginning
-        oRegex = re.search('(.{32})', message.content)
-        short_url = oRegex.group()
-        song_url = await get_full_url(short_url)
-        if(song_url != None):
-            response = await add_song_to_playlist(song_url, PLAYLISTID, sp)
-        if(response == 'success'):
-            await message.add_reaction('\N{THUMBS UP SIGN}')
-        elif(response == 'duplicate'):
-            await message.reply('Song already in playlist \N{PENSIVE FACE}')
+        oRegex = re.search(r'(https://spotify\.link/\S+)', message.content)
+        if(oRegex):
+            short_url = oRegex.group(1)
+            song_url = await get_full_url(short_url)
+            if(song_url):
+                response = await add_song_to_playlist(song_url, PLAYLISTID, sp)
+                if(response == 'success'):
+                    await message.add_reaction('\N{THUMBS UP SIGN}')
+                elif(response == 'duplicate'):
+                    await message.reply('Song already in playlist \N{PENSIVE FACE}')
+        else:
+            discord_logger.warning("Couldn't extract short Spotify URL.")
 
 client.run(TOKEN, log_handler = None)
