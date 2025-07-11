@@ -143,7 +143,7 @@ async def on_message(message):
             await message.reply('Song already in playlist \N{PENSIVE FACE}')
     if 'https://spotify.link/' in message.content:
         discord_logger.info( "Detected Spotify shortened URL")
-        #grab only the url, should be 32 characters from beginning
+        #grab only the url
         oRegex = re.search(r'(https://spotify\.link/\S+)', message.content)
         if(oRegex):
             short_url = oRegex.group(1)
